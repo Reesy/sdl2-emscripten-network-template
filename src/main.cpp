@@ -8,69 +8,11 @@
 #include <SDL2/SDL_image.h>
 #include <emscripten/websocket.h>
 #else
-// #include "httplib.h"
 #include <SDL.h>
 #include <SDL_image.h>
 #endif
 
 #undef main // Needed for windows.
-#if __EMSCRIPTEN__
-
-EM_JS(int, canvas_get_width, (), {
-	return canvas.width;
-});
-
-EM_JS(int, canvas_get_height, (), {
-	return canvas.height;
-});
-
-EM_JS(void, call_alert, (), {
-	console.log('It bounced');
-});
-
-EM_BOOL onopen(int eventType, const EmscriptenWebSocketOpenEvent *websocketEvent, void *userData)
-{
-	puts("onopen");
-
-	EMSCRIPTEN_RESULT result;
-	result = emscripten_websocket_send_utf8_text(websocketEvent->socket, "hoge");
-	if (result)
-	{
-		printf("Failed to emscripten_websocket_send_utf8_text(): %d\n", result);
-	}
-	return EM_TRUE;
-}
-EM_BOOL onerror(int eventType, const EmscriptenWebSocketErrorEvent *websocketEvent, void *userData)
-{
-	puts("onerror");
-
-	return EM_TRUE;
-}
-EM_BOOL onclose(int eventType, const EmscriptenWebSocketCloseEvent *websocketEvent, void *userData)
-{
-	puts("onclose");
-
-	return EM_TRUE;
-}
-EM_BOOL onmessage(int eventType, const EmscriptenWebSocketMessageEvent *websocketEvent, void *userData)
-{
-	puts("onmessage");
-	if (websocketEvent->isText)
-	{
-		// For only ascii chars.
-		printf("message: %s\n", websocketEvent->data);
-	}
-
-	EMSCRIPTEN_RESULT result;
-	result = emscripten_websocket_close(websocketEvent->socket, 1000, "no reason");
-	if (result)
-	{
-		printf("Failed to emscripten_websocket_close(): %d\n", result);
-	}
-	return EM_TRUE;
-}
-
-#endif
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
@@ -186,13 +128,11 @@ void update(double dt)
 	if (positionRect.y <= 0)
 	{
 		falling = true;
-	//	sendMessage();
 	};
 
 	if (positionRect.y >= (480 - positionRect.h))
 	{
 		falling = false;
-	//	sendMessage();
 	};
 
 	if (falling)
@@ -233,11 +173,6 @@ void mainLoop()
 		frameTime = 250; // Upper bound on the time between processing this loop. If physics simulation is slower than render calculation then the game could halt.
 	}
 
-	// #if __EMSCRIPTEN__
-	// int canvasWidth = canvas_get_width();
-	// std::cout << "The canvas width was: " << canvasWidth << std::endl;
-	// #endif
-
 	currentTime = newTime;
 
 	accumulator += frameTime;
@@ -257,68 +192,13 @@ void mainLoop()
 	}
 }
 
-// #if !__EMSCRIPTEN__
-// void sendMessage()
-// {
-// 	httplib::Client cli("localhost", 8000);
-
-// 	if (auto res = cli.Get("/api/v1/test1"))
-// 	{
-// 		if (res->status == 200)
-// 		{
-// 			std::cout << "Response was 200" << std::endl;
-// 			std::cout << res->body << std::endl;
-// 		}
-// 		else
-// 		{
-// 			std::cout << "Something else happened" << std::endl;
-// 		}
-// 	}
-// 	else
-// 	{
-// 		auto err = res.error();
-// 		std::cout << "Server response is: " << err << std::endl;
-// 	}
-// };
-
-// #endif
-
-#if __EMSCRIPTEN__
-
-void sendMessage()
-{
-	call_alert();
-};
-
-void setupWebSocket()
-{
-	if (!emscripten_websocket_is_supported())
-	{
-		std::cout << "WebSockets are not supported by this browser." << std::endl;
-		return;
-	}
-	EmscriptenWebSocketCreateAttributes ws_attrs = {
-		"wss://echo.websocket.org",
-		NULL,
-		EM_TRUE};
-
-	EMSCRIPTEN_WEBSOCKET_T ws = emscripten_websocket_new(&ws_attrs);
-	emscripten_websocket_set_onopen_callback(ws, NULL, onopen);
-	emscripten_websocket_set_onerror_callback(ws, NULL, onerror);
-	emscripten_websocket_set_onclose_callback(ws, NULL, onclose);
-	emscripten_websocket_set_onmessage_callback(ws, NULL, onmessage);
-};
-#endif
-
 int main(int, char **)
 {
 	init();
 
-	// sendMessage();
 // When creating a native app (.exe on windows or sh on OSX/Linux this will directly call mainLoop. when running in browser emscripten deals with calls to the main method)
 #if __EMSCRIPTEN__
 	emscripten_set_main_loop(mainLoop, -1, 1);
-	setupWebSocket();
 #else
 	while (quit != true)
 	{
