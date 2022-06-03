@@ -6,7 +6,9 @@ project(SDL2_example LANGUAGES CXX) #set the project name and to use C++
 
 set(CMAKE_BUILD_TYPE Debug)
 
-set(MY_SOURCES src/main.cpp)
+set(MY_SOURCES src/main.cpp
+               src/services/WebsocketService.cpp
+               include/WebsocketService.hpp)
 
 set(MY_RESOURCES resources)
 
@@ -21,8 +23,9 @@ if (NOT ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
 
     include_directories(${SDL2_INCLUDE_DIR})
 
-    include_directories(${PROJECT_SOURCE_DIR}/libs/httplib)
 endif()
+
+include_directories(${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 if (MINGW)
     link_directories("${PROJECT_SOURCE_DIR}/libs/mingw/SDL2-2.0.14/i686-w64-mingw32/lib/" "${PROJECT_SOURCE_DIR}/libs/mingw/SDL2_image-2.0.5/i686-w64-mingw32/lib/")
@@ -84,7 +87,8 @@ elseif( ${CMAKE_SYSTEM_NAME} MATCHES "Emscripten")
     
     message(STATUS "######------ Setting Emescripten configs   ------######")
     
-    set(USE_FLAGS "-s USE_SDL=2 -s USE_SDL_IMAGE=2 -s SDL2_IMAGE_FORMATS='[\"png\"]' -s USE_FREETYPE=1 --preload-file resources/ -lwebsocket.js")
+    set(USE_FLAGS "-s USE_SDL=2 -s USE_SDL_IMAGE=2 -s SDL2_IMAGE_FORMATS='[\"png\"]' -s USE_FREETYPE=1 --preload-file resources/")
+    target_link_libraries(${EXECUTABLE_NAME} -lwebsocket.js)
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${USE_FLAGS}")
     file(COPY "index.html" DESTINATION ${CMAKE_BINARY_DIR})
     file(COPY "server.py" DESTINATION ${CMAKE_BINARY_DIR})

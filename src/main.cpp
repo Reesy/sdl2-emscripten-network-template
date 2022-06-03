@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string>
 #include <iostream>
+#include <WebsocketService.hpp>
 
 #if __EMSCRIPTEN__
 #include <emscripten/emscripten.h>
@@ -12,12 +13,14 @@
 #include <SDL_image.h>
 #endif
 
+
 #undef main // Needed for windows.
 
 SDL_Window *window = NULL;
 SDL_Renderer *renderer = NULL;
 SDL_Event *event = NULL;
 SDL_Texture *circle = NULL;
+
 SDL_Rect textureRect;
 SDL_Rect positionRect;
 
@@ -33,7 +36,18 @@ double accumulator = 0.0;			 // This will hold the accumulation of physics steps
 
 double velocity = 1;
 
+//Message queue
+std::string message;
+
+
+
 void sendMessage();
+
+void handle_incoming_message(const char *_message)
+{
+    printf("Received message: %s\n", _message);
+	message = "lah";
+}
 
 SDL_Texture *loadTexture(const std::string &file, SDL_Renderer *ren)
 {
@@ -49,6 +63,7 @@ SDL_Texture *loadTexture(const std::string &file, SDL_Renderer *ren)
 void init()
 {
 
+	message = "not yet set.";
 	// Start up SDL and make sure it went ok
 	if (SDL_Init(SDL_INIT_VIDEO) != 0)
 	{
@@ -91,6 +106,32 @@ void init()
 					0,			   // Y position - sets the circle at the top of the screen
 					15,			   // Sets the height of the circle
 					15};		   // Sets the weidth of the circle
+}
+
+void init_websocket()
+{
+    if (!emscripten_websocket_is_supported())
+    {
+        return;
+    };
+    
+    WebsocketService * websocketService = new WebsocketService((char *)"ws://localhost:7001");
+
+
+    websocketService->register_onopen_callback([websocketService]() 
+    {
+        std::cout << "Registered onopen callback being called. " << std::endl;
+        websocketService->send_utf8_text("Konnichiwa!");
+    });
+    
+    websocketService->register_onmessage_callback([websocketService](char* _message) 
+    {
+        std::cout << "Received message: " << _message << std::endl;
+		message = _message;
+    });
+
+    
+    websocketService->init();
 }
 
 void input()
@@ -144,6 +185,7 @@ void update(double dt)
 
 		positionRect.y -= velocity * dt;
 	}
+	std::cout << "Message is: " << message << std::endl;
 }
 
 void render()
@@ -195,6 +237,7 @@ void mainLoop()
 int main(int, char **)
 {
 	init();
+	init_websocket();
 
 // When creating a native app (.exe on windows or sh on OSX/Linux this will directly call mainLoop. when running in browser emscripten deals with calls to the main method)
 #if __EMSCRIPTEN__
