@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string>
+#include <sstream>
 #include <iostream>
 #include <WebsocketService.hpp>
 
@@ -38,7 +39,7 @@ double velocity = 1;
 
 //Message queue
 std::string message;
-
+WebsocketService *websocketService = NULL;
 
 
 void sendMessage();
@@ -115,16 +116,16 @@ void init_websocket()
         return;
     };
     
-    WebsocketService * websocketService = new WebsocketService((char *)"ws://localhost:7001");
+    websocketService = new WebsocketService((char *)"ws://localhost:7001");
 
 
-    websocketService->register_onopen_callback([websocketService]() 
+    websocketService->register_onopen_callback([]() 
     {
         std::cout << "Registered onopen callback being called. " << std::endl;
         websocketService->send_utf8_text("Konnichiwa!");
     });
     
-    websocketService->register_onmessage_callback([websocketService](char* _message) 
+    websocketService->register_onmessage_callback([](char* _message) 
     {
         std::cout << "Received message: " << _message << std::endl;
 		message = _message;
@@ -163,6 +164,31 @@ void input()
 	}
 }
 
+void sendState()
+{
+	// Send the state of the game to the server
+	std::cout << "Position Rect X is : " << positionRect.x << std::endl;
+	std::cout << "Position Rect Y is : " << positionRect.y << std::endl;
+
+	// I wish to convert an int to a const char *
+	std::stringstream ss;
+	ss << positionRect.x;
+	std::string x = ss.str();
+
+
+	// I want to convert a string to a const char*
+	std::stringstream ss2;
+	ss2 << positionRect.y;
+	std::string y = ss2.str();
+
+	std::string message = "x:" + x + "y:" + y;
+	websocketService->send_utf8_text(message.c_str());
+
+	// // char* positionX = (char*)positionRect.x;
+	// websocketService->send_utf8_text(x);
+
+}
+
 void update(double dt)
 {
 
@@ -185,7 +211,7 @@ void update(double dt)
 
 		positionRect.y -= velocity * dt;
 	}
-	std::cout << "Message is: " << message << std::endl;
+	
 }
 
 void render()
@@ -227,6 +253,7 @@ void mainLoop()
 
 	render(); // Produces dt (takes time to calculate)
 
+	sendState();
 	// Event Polling
 	while (SDL_PollEvent(event))
 	{
